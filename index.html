@@ -1,0 +1,1257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>System 3 — A Fast System 1 Router Steering a Slow System 2 Transformer</title>
+<meta name="description" content="System 3 gives a language model a persistent, event-driven latent state (a System 1 router) that switches on surprise and steers every layer of a conventional autoregressive System 2 transformer.">
+<meta name="author" content="tdizhere">
+<meta property="og:type" content="article">
+<meta property="og:title" content="System 3 — A Dual-Stream Cognitive Architecture for Language Models">
+<meta property="og:description" content="A JEPA-style predictive-coding System 1 state router inside a System 2 transformer. 53.0M params, 2.004 nats held-out (PPL 7.4), driver-vs-passenger audited.">
+<meta property="og:image" content="test1_result/1_training_convergence.png">
+<style>
+:root{
+  color-scheme:light;
+  --bg:#ddd4c0; --bg2:#d1c7b0; --card:#f1ebdd; --figure:#fcfaf4;
+  --ink:#241f17; --ink2:#37312a; --muted:#5d5344;
+  --line:#c6bba3; --line2:#ada083;
+  --accent:#175e4e; --accent-soft:#cfe0d8;
+  --accent2:#7a4b22; --accent2-soft:#ecdcc6;
+  --warn:#8f3a20; --warn-soft:#ecd2c6;
+  --code:#e7dfcd;
+  --shadow:0 1px 2px rgba(60,48,30,.09),0 10px 26px rgba(60,48,30,.10);
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,Cambria,"Times New Roman",serif;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+  --mono:"SFMono-Regular",ui-monospace,"Cascadia Code",Consolas,"Liberation Mono",monospace;
+  --maxw:920px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--ink);
+  font-family:var(--serif);font-size:18.5px;line-height:1.74;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;overflow-x:hidden;
+}
+body::before{
+  content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:
+    radial-gradient(1000px 460px at 80% -10%, rgba(255,249,236,.55), transparent 62%),
+    radial-gradient(820px 420px at 4% -6%, rgba(23,94,78,.07), transparent 60%);
+}
+#progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .1s linear}
+header.topbar{position:sticky;top:0;z-index:50;backdrop-filter:saturate(1.2) blur(8px);
+  background:rgba(221,212,192,.86);border-bottom:1px solid var(--line2)}
+.navin{max-width:1100px;margin:0 auto;padding:.5rem 1.1rem;display:flex;align-items:center;gap:1rem}
+.brand{font-family:var(--sans);font-weight:800;letter-spacing:.02em;font-size:.95rem;white-space:nowrap;color:var(--ink)}
+.brand b{color:var(--accent)}
+nav.links{display:flex;gap:.1rem;margin-left:auto;flex-wrap:wrap;justify-content:flex-end}
+nav.links a{font-family:var(--sans);font-size:.77rem;text-decoration:none;color:var(--muted);
+  padding:.3rem .55rem;border-radius:7px;white-space:nowrap}
+nav.links a:hover{color:var(--ink);background:rgba(255,255,255,.35)}
+nav.links a.active{color:var(--accent);background:var(--accent-soft)}
+main{max-width:var(--maxw);margin:0 auto;padding:0 1.15rem 6rem}
+.masthead{padding:3.2rem 0 1rem;text-align:center}
+.kicker{font-family:var(--sans);font-size:.73rem;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--accent2);font-weight:700;margin-bottom:1.1rem}
+h1.title{font-family:var(--serif);font-weight:600;font-size:clamp(1.9rem,4.4vw,3rem);
+  line-height:1.15;margin:.2rem 0 .5rem;letter-spacing:-.01em}
+.subtitle{font-size:clamp(1rem,2vw,1.2rem);color:var(--muted);font-style:italic;margin:.4rem auto 1.4rem;max-width:47ch}
+.authors{font-family:var(--sans);font-size:.95rem;color:var(--ink2)}
+.authors a{color:var(--accent);text-decoration:none;border-bottom:1px solid transparent}
+.authors a:hover{border-color:var(--accent)}
+.affil{font-family:var(--sans);font-size:.82rem;color:var(--muted);margin-top:.15rem}
+.actions{display:flex;gap:.55rem;justify-content:center;flex-wrap:wrap;margin-top:1.3rem}
+.btn{font-family:var(--sans);font-size:.83rem;font-weight:600;text-decoration:none;
+  border:1px solid var(--line2);background:var(--card);color:var(--ink2);
+  padding:.5rem .9rem;border-radius:9px;cursor:pointer;display:inline-flex;gap:.4rem;align-items:center}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.primary{background:var(--ink);color:var(--card);border-color:var(--ink)}
+.btn.primary:hover{background:var(--accent);border-color:var(--accent);color:#fff}
+.crumbs{font-family:var(--sans);font-size:.8rem;color:var(--muted);margin:1.6rem 0 .3rem}
+section{padding-top:2.5rem}
+h2{font-family:var(--sans);font-weight:750;font-size:1.42rem;letter-spacing:-.01em;
+  margin:2.6rem 0 .7rem;display:flex;align-items:baseline;gap:.6rem;scroll-margin-top:80px}
+h2 .num{font-family:var(--mono);font-size:.92rem;color:var(--accent);font-weight:600}
+h3{font-family:var(--sans);font-weight:680;font-size:1.09rem;margin:1.9rem 0 .45rem;scroll-margin-top:80px}
+h4{font-family:var(--sans);font-weight:650;font-size:.95rem;margin:1.3rem 0 .3rem;color:var(--ink2)}
+p{margin:.85rem 0}
+a{color:var(--accent);text-decoration:none;border-bottom:1px solid var(--line2)}
+a:hover{border-color:var(--accent)}
+strong{font-weight:700}
+.small{font-size:.9rem}
+.plain{font-size:1.06rem}
+.plain .lead{font-weight:700}
+.technical{border-left:3px solid var(--accent2-soft);padding-left:1rem;margin:1.2rem 0}
+.technical::before{content:"The technical version";display:block;font-family:var(--sans);font-size:.7rem;
+  letter-spacing:.09em;text-transform:uppercase;color:var(--accent2);font-weight:700;margin-bottom:.3rem}
+.abstract{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--accent);
+  border-radius:12px;padding:1.4rem 1.5rem;box-shadow:var(--shadow);margin-top:.5rem}
+.abstract h2{margin:0 0 .5rem;font-size:1.05rem;color:var(--accent);font-family:var(--sans);
+  letter-spacing:.02em;text-transform:uppercase;font-weight:750;display:block}
+.abstract p{margin:.5rem 0;font-size:1.02rem}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.8rem;margin:1.6rem 0}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:1rem;text-align:center;box-shadow:var(--shadow)}
+.stat .v{font-family:var(--sans);font-size:1.5rem;font-weight:800;letter-spacing:-.02em;color:var(--accent);line-height:1.1}
+.stat .l{font-family:var(--sans);font-size:.72rem;color:var(--muted);margin-top:.35rem;text-transform:uppercase;letter-spacing:.05em}
+.stat .s{font-size:.78rem;color:var(--muted);margin-top:.2rem}
+.callout{border:1px solid var(--line);border-radius:11px;padding:.95rem 1.15rem;margin:1.3rem 0;background:var(--card)}
+.callout.tip{border-left:4px solid var(--accent)}
+.callout.warn{border-left:4px solid var(--warn)}
+.callout .h{font-family:var(--sans);font-weight:700;font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.35rem;color:var(--muted)}
+.callout.tip .h{color:var(--accent)}
+.callout.warn .h{color:var(--warn)}
+.callout p{margin:.35rem 0;font-size:.97rem}
+.eq{margin:1.1rem 0;padding:.85rem 1rem;text-align:center;background:var(--card);
+  border:1px solid var(--line);border-radius:10px;font-size:1.02rem;color:var(--ink2);overflow-x:auto}
+.eq var{font-style:italic;color:var(--ink)}
+var{font-family:var(--serif);font-style:italic}
+sub,sup{font-size:.7em}
+figure{margin:2rem 0;scroll-margin-top:80px}
+.figpanel{background:var(--figure);border:1px solid var(--line2);border-radius:12px;padding:16px 18px;box-shadow:var(--shadow);overflow:hidden}
+.figpanel svg{display:block;width:100%;height:auto}
+.figpanel img{display:block;width:100%;height:auto;border-radius:5px;cursor:zoom-in}
+.diagram text{font-family:var(--sans)}
+.diagram .ttl{font:700 13px var(--sans);fill:#241f17}
+.diagram .bt{font:600 12.5px var(--sans);fill:#241f17}
+.diagram .bs{font:400 10.5px var(--sans);fill:#5f5748}
+.diagram .be{font:italic 10.5px var(--sans);fill:#5f5748}
+.diagram .cap{font:700 10px var(--sans);letter-spacing:.10em;fill:#8a7f6a}
+.diagram .bx{stroke-width:1.5}
+figcaption{font-size:.87rem;color:var(--muted);margin-top:.7rem;line-height:1.55;padding:0 .3rem}
+figcaption b{color:var(--ink2);font-family:var(--sans)}
+.figtag{font-family:var(--sans);font-size:.68rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+  color:#fff;background:var(--accent);padding:.14rem .45rem;border-radius:5px;margin-right:.5rem}
+.figtag.alt{background:var(--accent2)}
+.tablewrap{overflow-x:auto;margin:1.4rem 0;border:1px solid var(--line);border-radius:11px;background:var(--card)}
+table{border-collapse:collapse;width:100%;font-family:var(--sans);font-size:.85rem}
+caption{caption-side:top;text-align:left;font-family:var(--sans);font-size:.84rem;color:var(--muted);padding:.8rem .95rem .2rem}
+caption b{color:var(--ink2)}
+th,td{padding:.55rem .8rem;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+thead th{background:var(--bg2);font-weight:700;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:var(--ink2)}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover{background:rgba(255,255,255,.32)}
+td code,th code{font-family:var(--mono);font-size:.8em;background:var(--code);padding:.08rem .35rem;border-radius:5px}
+.pos{color:var(--accent);font-weight:700}
+.neg{color:var(--warn);font-weight:700}
+pre{background:var(--code);border:1px solid var(--line);border-radius:11px;padding:1rem 1.1rem;
+  overflow-x:auto;font-family:var(--mono);font-size:.83rem;line-height:1.62;color:var(--ink2)}
+code{font-family:var(--mono);font-size:.86em;background:var(--code);padding:.08rem .34rem;border-radius:5px}
+pre code{background:none;padding:0}
+.cmd{color:var(--accent);font-weight:700}
+.cmt{color:var(--muted)}
+ul.clean{list-style:none;padding-left:0;margin:1rem 0}
+ul.clean li{position:relative;padding-left:1.6rem;margin:.6rem 0}
+ul.clean li::before{content:"\25B8";position:absolute;left:.2rem;color:var(--accent);font-weight:700}
+ol.refs{padding-left:1.4rem;font-size:.88rem;color:var(--ink2)}
+ol.refs li{margin:.5rem 0}
+ol.refs a{border-bottom:1px dotted var(--line2)}
+.chips{display:flex;flex-wrap:wrap;gap:.4rem;margin:.7rem 0}
+.chip{font-family:var(--sans);font-size:.74rem;padding:.24rem .6rem;border-radius:999px;
+  background:var(--accent2-soft);color:var(--accent2);border:1px solid var(--line);font-weight:600}
+.chip.t{background:var(--accent-soft);color:var(--accent)}
+.bibwrap{position:relative}
+.copybtn{position:absolute;top:.55rem;right:.55rem;font-family:var(--sans);font-size:.72rem;font-weight:600;
+  background:var(--card);border:1px solid var(--line2);color:var(--ink2);border-radius:7px;padding:.3rem .6rem;cursor:pointer}
+.copybtn:hover{border-color:var(--accent);color:var(--accent)}
+.copybtn.done{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+#lightbox{position:fixed;inset:0;z-index:100;background:rgba(30,24,14,.9);display:none;
+  align-items:center;justify-content:center;padding:2.2rem;cursor:zoom-out}
+#lightbox.open{display:flex}
+#lightbox img{max-width:100%;max-height:100%;border-radius:8px;box-shadow:0 20px 70px rgba(0,0,0,.55);background:#fff}
+#lightbox .lbcap{position:absolute;bottom:1rem;left:0;right:0;text-align:center;color:#e8e0d0;font-family:var(--sans);font-size:.8rem}
+footer{border-top:1px solid var(--line2);margin-top:3.5rem;padding:2rem 0 3rem;text-align:center;color:var(--muted);font-size:.85rem}
+footer a{color:var(--accent)}
+hr.sep{border:none;border-top:1px solid var(--line);margin:2.4rem 0}
+.toc{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:1rem 1.3rem;margin:1.6rem 0;box-shadow:var(--shadow)}
+.toc .h{font-family:var(--sans);font-size:.74rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;margin-bottom:.5rem}
+.toc ol{margin:0;padding-left:1.2rem;font-family:var(--sans);font-size:.86rem;columns:2;column-gap:1.6rem}
+.toc li{margin:.22rem 0}
+.toc a{color:var(--ink2);border:none}
+.toc a:hover{color:var(--accent)}
+@media (max-width:640px){
+  body{font-size:17px}
+  .toc ol{columns:1}
+  nav.links{display:none}
+}
+@media print{
+  header.topbar,#progress,.actions,.copybtn,#lightbox{display:none}
+  body{background:#fff}
+  .figpanel{box-shadow:none}
+  section,figure{page-break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header class="topbar">
+  <div class="navin">
+    <div class="brand">System<b>3</b></div>
+    <nav class="links">
+      <a href="#intro">Idea</a>
+      <a href="#background">Background</a>
+      <a href="#architecture">Architecture</a>
+      <a href="#method">Method</a>
+      <a href="#setup">Setup</a>
+      <a href="#results">Results</a>
+      <a href="#ablations">Ablations</a>
+      <a href="#discussion">Discussion</a>
+      <a href="#reproduce">Reproduce</a>
+      <a href="#cite">Cite</a>
+    </nav>
+  </div>
+</header>
+<main>
+  <div class="masthead">
+    <div class="kicker">Technical Report &middot; Neural Architecture &middot; v0.1</div>
+    <h1 class="title">System&nbsp;3: A Fast System&nbsp;1 Router that Steers a  System&nbsp;2 Transformer</h1>
+    <p class="subtitle">A small, event-driven latent state that stays put until something surprising happens &mdash; and quietly changes how the model thinks.</p>
+    <div class="authors"><a href="https://github.com/tdizhere">tdizhere</a></div>
+    <div class="affil">Independent research &middot; <a href="https://github.com/tdizhere/System3">github.com/tdizhere/System3</a></div>
+    <div class="actions">
+      <a class="btn primary" href="https://github.com/tdizhere/System3">&#9733; Source code</a>
+      <a class="btn" href="#results">Results &darr;</a>
+      <a class="btn" href="#reproduce">Reproduce</a>
+      <button class="btn" id="printBtn">&#9109; Print / PDF</button>
+    </div>
+  </div>
+  <section id="abstract" style="padding-top:0">
+    <div class="abstract">
+      <h2>Abstract</h2>
+      <p>
+        Most language models think the same way about every token &mdash; a period and a punchline get the
+        same treatment &mdash; and they keep no lasting sense of &ldquo;what am I doing right now?&rdquo;.
+        <strong>System&nbsp;3</strong> adds that missing ingredient: a small, persistent mental state that
+        stays the same for long stretches and only updates when the model is genuinely surprised by what it
+        just saw. That state then gently reshapes how every layer of the network attends and transforms its
+        input.
+      </p>
+      <p>
+        Technically, we embed a <strong>System&nbsp;1</strong> module &mdash; a JEPA-style predictive-coding,
+        state-routing router &mdash; inside a conventional autoregressive <strong>System&nbsp;2</strong>
+        transformer. We train a 53.0M-parameter model on TinyStories&nbsp;+&nbsp;TinyGSM8k to
+        <strong>2.004 nats held-out (perplexity 7.4)</strong>, and &mdash; through a
+        <strong>driver-vs-passenger audit</strong> &mdash; show the state is actually used: removing or
+        scrambling it makes the model measurably worse. Every mechanism is an independent on/off switch.
+      </p>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="v" data-count="2.004" data-dec="3">2.004</div><div class="l">Best val &middot; nats</div><div class="s">perplexity 7.4</div></div>
+      <div class="stat"><div class="v" data-count="53.0" data-dec="1">53.0</div><div class="l">Parameters &middot; M</div><div class="s">d_model 512 &middot; 8 layers</div></div>
+      <div class="stat"><div class="v" data-count="24" data-dec="0">24</div><div class="l">State anchors</div><div class="s">6 intents &times; 4 depths</div></div>
+      <div class="stat"><div class="v" data-count="5.7" data-dec="1">5.7</div><div class="l">Switch rate &middot; %</div><div class="s">target 8% &middot; event-driven</div></div>
+      <div class="stat"><div class="v">+0.0042</div><div class="l">State-removed &Delta; &middot; nats</div><div class="s">the state matters</div></div>
+    </div>
+    <div class="toc">
+      <div class="h">Contents</div>
+      <ol>
+        <li><a href="#intro">The idea, in plain words</a></li>
+        <li><a href="#background">Background</a></li>
+        <li><a href="#architecture">Architecture</a></li>
+        <li><a href="#method">Method</a></li>
+        <li><a href="#setup">Experimental setup</a></li>
+        <li><a href="#results">Results</a></li>
+        <li><a href="#ablations">Ablations</a></li>
+        <li><a href="#discussion">Discussion &amp; limitations</a></li>
+        <li><a href="#reproduce">Reproduce</a></li>
+        <li><a href="#cite">Citation</a></li>
+      </ol>
+    </div>
+  </section>
+  <section id="intro">
+    <h2><span class="num">1</span> The idea, in plain words</h2>
+    <div class="plain">
+      <p>
+        <span class="lead">You already run on two speeds.</span> Catch a ball, recognise a face, finish a
+        familiar sentence &mdash; that is the fast, instinctive mode. It is cheap, it never stops running, and
+        you barely notice it. Then there is the slow mode: doing long division, planning a trip, checking
+        your own work. Deliberate, expensive, one careful step at a time.
+      </p>
+      <p>
+        Modern language models are almost entirely the slow kind. For every single word they re-run the same
+        big, careful computation, and they carry no lasting sense of <em>where they are</em> in the task.
+        Ask one to summarise a story and then to solve a maths problem, and internally there is no switch
+        that says &ldquo;we have changed activity now&rdquo;. Everything is recomputed from scratch, word by word.
+      </p>
+      <p>
+        <span class="lead">Our idea is to give it that missing sense.</span> Alongside the fast word-by-word
+        engine, we add a small, slow &ldquo;state&rdquo; &mdash; a handful of numbers that describe the model&rsquo;s
+        current frame of mind, like <em>planning</em>, <em>explaining</em>, or <em>checking my answer</em>.
+        Crucially, that state does <em>not</em> change every word. It sits still, and it changes only when the
+        model is genuinely <strong>surprised</strong> by what just happened &mdash; exactly like how you keep
+        reading calmly until something unexpected makes you stop and re-read.
+      </p>
+      <p>
+        When the state does change, it doesn&rsquo;t just pick a different internal setting. It reaches into
+        every layer of the network and <strong>steers</strong> it &mdash; nudging attention and the
+        feed-forward parts so the model thinks differently while that state is active. Fast engine, slow
+        guide. That combination is what we call <strong>System&nbsp;3</strong>.
+      </p>
+    </div>
+
+    <div class="technical">
+      <p>
+        Concretely, System&nbsp;3 couples a <strong>System&nbsp;1 module</strong> &mdash; a JEPA-style
+        predictive-coding, state-routing router &mdash; with a standard autoregressive
+        <strong>System&nbsp;2</strong> transformer. The router maintains a latent macro-state
+        <var>s<sub>t</sub></var>, opens a calibrated, <em>semi-Markov</em> switch gate only when the
+        predictive-coding residual &mdash; the model&rsquo;s surprise &mdash; spikes, scores discrete and
+        continuous state proposals with a System&nbsp;1 bilinear-plus-value metric, and steers every
+        transformer layer through AdaRMSNorm modulation, a state-routed LoRA-SwiGLU, and a per-head attention
+        temperature.
+      </p>
+    </div>
+
+    <h4>Why bother &mdash; and why it should be testable</h4>
+    <p>
+      A model that could hold a frame of mind would, in principle, spend its effort where it belongs: a
+      single &ldquo;explain this simply&rdquo; state could shape a whole paragraph without the model
+      re-deciding its stance at every token. But a claim like that is easy to make and easy to fake &mdash;
+      you can draw a beautiful internal state that the rest of the network secretly ignores. So we built the
+      second half of the idea in from day one: a <strong>test</strong> that deletes or scrambles the state and
+      checks whether the model gets worse. If it doesn&rsquo;t get worse, the state was decoration.
+    </p>
+    <h3>Contributions</h3>
+    <ul class="clean">
+      <li><strong>A dual-stream architecture.</strong> A persistent, event-driven System&nbsp;1 latent state
+        <var>s<sub>t</sub></var> produced <em>inside</em> the model that modulates every steered layer of an
+        otherwise ordinary autoregressive transformer.</li>
+      <li><strong>A predictive-coding switch gate.</strong> A dimension-invariant surprise signal bounded in
+        <code>[0, 4]</code> regardless of width, driving a calibrated Hard-Concrete gate with a semi-Markov
+        dwell counter.</li>
+      <li><strong>A compositional state space.</strong> <code>6 intents &times; 4 depth modes = 24</code>
+        anchors, blended with a per-position nuance vector and scored by a System&nbsp;1 metric with an
+        explicit &ldquo;jump cost&rdquo;.</li>
+      <li><strong>A mechanistic audit protocol.</strong> A driver-vs-passenger counterfactual test plus a
+        layer-by-layer weight and activation audit, shipped as one command.</li>
+    </ul>
+  </section>
+
+  <section id="background">
+    <h2><span class="num">2</span> Background</h2>
+    <div class="plain">
+      <p>
+        <span class="lead">Two families of ideas already live close to ours, and it helps to see how.</span>
+        The first is <em>prediction</em>: our brains (and good compression) work by predicting what comes next
+        and paying attention only to what they got wrong. The second is <em>routing</em>: instead of using one
+        giant network for everything, send each token to the few small experts that suit it.
+      </p>
+      <p>
+        What neither has, by itself, is a <em>memory of mood</em>. Prediction gives you surprise, but a fresh
+        surprise at every token. Routing picks experts, but forgets its choice immediately. Nobody keeps a
+        single slow state that both <em>lingers</em> and <em>steers</em>. That gap is the one System&nbsp;3
+        fills.
+      </p>
+    </div>
+    <div class="technical">
+      <p>
+        System&nbsp;3 borrows its <em>objective</em> from predictive coding and JEPA, its <em>mechanism</em>
+        from sparse routing and discrete stochastic gates, its <em>interface</em> from conditional
+        normalisation (FiLM / adaLN), and its <em>efficiency</em> from low-rank adaptation and linear-time
+        state updates.
+      </p>
+    </div>
+    <div class="chips">
+      <span class="chip">Predictive coding</span>
+      <span class="chip">JEPA</span>
+      <span class="chip">Sparse MoE / Switch</span>
+      <span class="chip">Hard-Concrete L0</span>
+      <span class="chip">Gumbel-Softmax</span>
+      <span class="chip">FiLM / adaLN-Zero</span>
+      <span class="chip">LoRA</span>
+      <span class="chip t">Semi-Markov dwell</span>
+      <span class="chip t">Sinkhorn OT routing</span>
+      <span class="chip t">Associative scan</span>
+      <span class="chip">GQA + RoPE</span>
+    </div>
+    <p>
+      <strong>Predictive coding / JEPA.</strong> Rao &amp; Ballard (1999) framed perception as
+      prediction-error minimisation; LeCun (2022) and Assran et al. (2023) turned it into the
+      Joint-Embedding Predictive Architecture, predicting <em>representations</em> rather than raw inputs.
+      System&nbsp;3 uses the predictive residual not as a training objective alone but as the
+      <em>control signal</em> that decides when to switch.
+    </p>
+    <p>
+      <strong>Sparse routing.</strong> Shazeer et al. (2017) and Fedus et al. (2022) route tokens to experts;
+      the routing is per-token and time-independent. System&nbsp;3&rsquo;s routing is <em>temporally
+      persistent</em>: the assignment is a latent state with a dwell time, and its balance objective is an
+      optimal-transport (Sinkhorn) assignment rather than a top-1 gate.
+    </p>
+    <p>
+      <strong>Conditioning &amp; steering.</strong> FiLM (P&eacute;rez et al., 2018) and adaLN-Zero
+      (Peebles &amp; Xie, 2023) modulate features from a conditioning vector; LoRA (Hu et al., 2022) injects
+      low-rank updates. System&nbsp;3 does both, but the conditioning vector is a learned, recurrent latent
+      state, composed with a state-routed low-rank path and a per-head attention temperature.
+    </p>
+    <p>
+      <strong>State &amp; time.</strong> Semi-Markov and hidden-Markov models (Rabiner, 1989) let a chain hold
+      its state for a random duration; selective state-space models (Gu &amp; Dao, 2024) run linear recurrence
+      efficiently. System&nbsp;3 adopts the dwell idea for <em>switch timing</em> and computes its inter-layer
+      state refinement with an exact O(log&nbsp;T) Kogge&ndash;Stone associative scan.
+    </p>
+  </section>
+  <section id="architecture">
+    <h2><span class="num">3</span> Architecture</h2>
+    <div class="plain">
+      <p>
+        <span class="lead">Think of System&nbsp;3 as two workers with different rhythms.</span> The first is
+        the ordinary language model &mdash; fast, reading token by token. The second is a small supervisor
+        that watches the fast worker but thinks slowly: it holds one &ldquo;state&rdquo; for a long time and
+        only changes it when the fast worker seems surprised. When it does change, it leans over and adjusts
+        the fast worker&rsquo;s attention and thinking for a while.
+      </p>
+      <p>
+        That&rsquo;s the whole shape of it. Everything below &mdash; the gates, the state space, the
+        steering details &mdash; is engineering in service of those two roles.
+      </p>
+    </div>
+    <div class="technical">
+      <p>
+        The <strong>System&nbsp;2 stream</strong> is a standard autoregressive transformer: embeddings, a
+        state-free perceptual stem, a stack of steered blocks, a final RMSNorm and a tied LM head. The
+        <strong>System&nbsp;1 stream</strong> reads the stem&rsquo;s context and emits, per position, a latent
+        state <var>s<sub>t</sub></var>, a binary switch trace <var>g<sub>t</sub></var>, and a dwell counter
+        <var>&tau;<sub>t</sub></var>. The backbone <em>perceives</em> downward into the router; the router
+        <em>steers</em> upward into the backbone.
+      </p>
+    </div>
+
+    <figure>
+      <div class="figpanel">
+        <svg class="diagram" viewBox="0 0 1080 544" role="img" aria-label="System 3 overview architecture">
+          <defs>
+            <marker id="f1-slate" viewBox="0 0 10 10" refX="7.6" refY="5" markerWidth="6.4" markerHeight="6.4" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="#4d5870"/>
+            </marker>
+            <marker id="f1-teal" viewBox="0 0 10 10" refX="7.6" refY="5" markerWidth="6.4" markerHeight="6.4" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="#1c6b5c"/>
+            </marker>
+            <marker id="f1-amber" viewBox="0 0 10 10" refX="7.6" refY="5" markerWidth="6.4" markerHeight="6.4" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="#a9663a"/>
+            </marker>
+          </defs>
+          <rect x="0" y="0" width="1080" height="544" fill="#fcfaf4"/>
+          <text class="ttl" x="48" y="44">System 3 &mdash; two coupled streams</text>
+          <line x1="48" y1="58" x2="1032" y2="58" stroke="#e2dccb" stroke-width="1.3"/>
+
+          <rect class="bx" x="48"  y="86" width="132" height="78" rx="8" fill="#efe9dd" stroke="#4d5870"/>
+          <text class="bt" x="114" y="120" text-anchor="middle">Input tokens</text>
+          <text class="bs" x="114" y="140" text-anchor="middle">x&#8321; &hellip; x_T</text>
+
+          <rect class="bx" x="216" y="86" width="196" height="78" rx="8" fill="#efe9dd" stroke="#4d5870"/>
+          <text class="bt" x="314" y="120" text-anchor="middle">Perceptual stem</text>
+          <text class="bs" x="314" y="140" text-anchor="middle">Layer 0 &middot; state-free</text>
+
+          <rect class="bx" x="448" y="86" width="250" height="78" rx="8" fill="#f6e9d8" stroke="#a9663a" stroke-width="2"/>
+          <text class="bt" x="573" y="114" text-anchor="middle">Steered blocks</text>
+          <text class="bs" x="573" y="133" text-anchor="middle">&times; (L&#8722;1) layers &middot; state-coupled</text>
+          <text class="bs" x="573" y="151" text-anchor="middle">AdaRMSNorm &middot; LoRA-SwiGLU &middot; head-&tau;</text>
+
+          <rect class="bx" x="734" y="86" width="180" height="78" rx="8" fill="#efe9dd" stroke="#4d5870"/>
+          <text class="bt" x="824" y="120" text-anchor="middle">Final RMSNorm</text>
+          <text class="bs" x="824" y="140" text-anchor="middle">+ tied LM head</text>
+
+          <rect class="bx" x="946" y="86" width="104" height="78" rx="8" fill="#efe9dd" stroke="#4d5870"/>
+          <text class="bt" x="998" y="120" text-anchor="middle">Logits</text>
+          <text class="bs" x="998" y="140" text-anchor="middle">next token</text>
+
+          <line x1="180" y1="125" x2="212" y2="125" stroke="#4d5870" stroke-width="1.6" marker-end="url(#f1-slate)"/>
+          <line x1="412" y1="125" x2="444" y2="125" stroke="#4d5870" stroke-width="1.6" marker-end="url(#f1-slate)"/>
+          <line x1="698" y1="125" x2="730" y2="125" stroke="#4d5870" stroke-width="1.6" marker-end="url(#f1-slate)"/>
+          <line x1="914" y1="125" x2="942" y2="125" stroke="#4d5870" stroke-width="1.6" marker-end="url(#f1-slate)"/>
+
+          <rect class="bx" x="216" y="352" width="482" height="118" rx="10" fill="#e2efe9" stroke="#1c6b5c" stroke-width="2"/>
+          <text class="bt" x="236" y="382">System 1 &middot; cognitive router</text>
+          <text class="bs" x="236" y="406">predict &rarr; surprise &rarr; gate &rarr; proposals &rarr; S&#8321; score</text>
+          <text class="bs" x="236" y="426">latent macro-state s_t (d_state = 128) &middot; 24 anchors = 6 intents &times; 4 depth modes</text>
+          <text class="bs" x="236" y="446">the state changes only when surprise opens the gate (semi-Markov)</text>
+
+          <line x1="314" y1="164" x2="314" y2="348" stroke="#1c6b5c" stroke-width="1.7" marker-end="url(#f1-teal)"/>
+          <text class="be" x="322" y="252">perceive: context h_t</text>
+
+          <line x1="573" y1="352" x2="573" y2="168" stroke="#a9663a" stroke-width="1.9" marker-end="url(#f1-amber)"/>
+          <text class="be" x="581" y="252">steer: s_t, g_t, &#964;_t</text>
+
+          <path d="M320,470 V506 H596 V474" fill="none" stroke="#1c6b5c" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#f1-teal)"/>
+          <text class="be" x="458" y="528" text-anchor="middle">recurrence over t &mdash; s_t becomes s_(t&#8722;1) at the next step</text>
+
+          <rect x="734" y="246" width="16" height="16" rx="3" fill="#efe9dd" stroke="#4d5870" stroke-width="1.4"/>
+          <text class="be" x="758" y="259">System 2 backbone &mdash; fast, serial, per-token</text>
+          <rect x="734" y="276" width="16" height="16" rx="3" fill="#e2efe9" stroke="#1c6b5c" stroke-width="1.4"/>
+          <text class="be" x="758" y="289">System 1 router &mdash; slow, event-driven state</text>
+          <rect x="734" y="306" width="16" height="16" rx="3" fill="#f6e9d8" stroke="#a9663a" stroke-width="1.4"/>
+          <text class="be" x="758" y="319">state-coupled computation (steering)</text>
+          <line x1="734" y1="342" x2="754" y2="342" stroke="#1c6b5c" stroke-width="1.6" stroke-dasharray="6 4"/>
+          <text class="be" x="758" y="346">coupling &amp; recurrence</text>
+        </svg>
+      </div>
+      <figcaption>
+        <span class="figtag">Figure 1</span>
+        <b>System&nbsp;3 overview &mdash; the two coupled streams.</b>
+        The System&nbsp;2 backbone (top, slate) processes tokens serially: stem &rarr; steered blocks (amber) &rarr;
+        tied LM head. The System&nbsp;1 router (bottom, teal) reads the stem context and maintains a persistent
+        latent state <var>s<sub>t</sub></var> with switch trace <var>g<sub>t</sub></var> and dwell
+        <var>&tau;<sub>t</sub></var>, then steers every steered block. Because the state updates only on a
+        switch, its cadence is <em>semi-Markov</em> &mdash; long holds, punctuated by surprise-driven jumps.
+      </figcaption>
+    </figure>
+  </section>
+  <section id="method">
+    <h2><span class="num">4</span> Method</h2>
+    <div class="plain">
+      <p>
+        <span class="lead">At every word, the supervisor runs one short checklist.</span> It guesses what
+        should come next; it measures how wrong that guess was; it decides whether the wrongness is big
+        enough to change its state; if so, it picks a new state from a small menu; and then it uses that state
+        to adjust the main model. Five quick steps, repeated word by word &mdash; but the state only actually
+        moves when step three says yes.
+      </p>
+    </div>
+    <div class="technical">
+      <p>
+        Each position <var>t</var> executes five stages &mdash; <em>predict, surprise, gate, propose,
+        score</em> &mdash; then writes the new state. The loop is fully differentiable, so gradients from the
+        language-modelling loss reach the gate and the codebooks.
+      </p>
+    </div>
+
+    <figure>
+      <div class="figpanel">
+        <svg class="diagram" viewBox="0 0 1080 360" role="img" aria-label="Router inner loop">
+          <defs>
+            <marker id="f2-navy" viewBox="0 0 10 10" refX="7.6" refY="5" markerWidth="6.4" markerHeight="6.4" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="#4d5870"/>
+            </marker>
+            <marker id="f2-teal" viewBox="0 0 10 10" refX="7.6" refY="5" markerWidth="6.4" markerHeight="6.4" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="#1c6b5c"/>
+            </marker>
+          </defs>
+          <rect x="0" y="0" width="1080" height="360" fill="#fcfaf4"/>
+          <text class="ttl" x="40" y="44">One router step &mdash; executed once per position t</text>
+          <line x1="40" y1="58" x2="1040" y2="58" stroke="#e2dccb" stroke-width="1.3"/>
+
+          <rect class="bx" x="40"  y="96" width="176" height="92" rx="8" fill="#e2efe9" stroke="#1c6b5c"/>
+          <text class="bt" x="128" y="124" text-anchor="middle">&#9312; Predictor</text>
+          <text class="bs" x="128" y="147" text-anchor="middle">&#293;_t = f_&#952;([ h_(t&#8722;1) ; s_(t&#8722;1) ])</text>
+          <text class="bs" x="128" y="165" text-anchor="middle">JEPA-style forward model</text>
+
+          <rect class="bx" x="246" y="96" width="176" height="92" rx="8" fill="#e2efe9" stroke="#1c6b5c"/>
+          <text class="bt" x="334" y="124" text-anchor="middle">&#9313; Surprise</text>
+          <text class="bs" x="334" y="147" text-anchor="middle">r_t = &#8214;u(e_t) &#8722; u(&#293;_t)&#8214;&sup2;</text>
+          <text class="bs" x="334" y="165" text-anchor="middle">&isin; [0,4] &middot; unit-RMS</text>
+
+          <rect class="bx" x="452" y="96" width="176" height="92" rx="8" fill="#e2efe9" stroke="#1c6b5c"/>
+          <text class="bt" x="540" y="124" text-anchor="middle">&#9314; Switch gate</text>
+          <text class="bs" x="540" y="147" text-anchor="middle">g_t ~ Hard-Concrete</text>
+          <text class="bs" x="540" y="165" text-anchor="middle">&#964;_t = (1&#8722;g_t)(&#964;_(t&#8722;1)+1)</text>
+
+          <rect class="bx" x="658" y="96" width="176" height="92" rx="8" fill="#e2efe9" stroke="#1c6b5c"/>
+          <text class="bt" x="746" y="124" text-anchor="middle">&#9315; Proposals</text>
+          <text class="bs" x="746" y="147" text-anchor="middle">c_k = anchor_k + &#957; &middot; &#251;_k</text>
+          <text class="bs" x="746" y="165" text-anchor="middle">top-k over the manifold</text>
+
+          <rect class="bx" x="864" y="96" width="176" height="92" rx="8" fill="#f6e9d8" stroke="#a9663a" stroke-width="2"/>
+          <text class="bt" x="952" y="124" text-anchor="middle">&#9316; S&#8321; score</text>
+          <text class="bs" x="952" y="147" text-anchor="middle">bilinear + value &#8722; &#955;&#8214;&#916;&#8214;&sup2;</text>
+          <text class="bs" x="952" y="165" text-anchor="middle">&rarr; s_t (gumbel-argmax)</text>
+
+          <line x1="216" y1="142" x2="242" y2="142" stroke="#4d5870" stroke-width="1.6" marker-end="url(#f2-navy)"/>
+          <line x1="422" y1="142" x2="448" y2="142" stroke="#4d5870" stroke-width="1.6" marker-end="url(#f2-navy)"/>
+          <line x1="628" y1="142" x2="654" y2="142" stroke="#4d5870" stroke-width="1.6" marker-end="url(#f2-navy)"/>
+          <line x1="834" y1="142" x2="860" y2="142" stroke="#4d5870" stroke-width="1.6" marker-end="url(#f2-navy)"/>
+
+          <path d="M952,188 V268 H128 V192" fill="none" stroke="#1c6b5c" stroke-width="1.7" stroke-dasharray="6 4" marker-end="url(#f2-teal)"/>
+          <text class="be" x="540" y="262" text-anchor="middle">closed loop &mdash; the chosen state becomes s_(t&#8722;1) at the next step, feeding the predictor and proposals</text>
+          <text class="be" x="540" y="216" text-anchor="middle">if the gate stays shut, the state is held and the dwell timer ticks</text>
+          <text class="bs" x="40" y="306">surprise is zero-centred and unit-variance via a running EMA; the gate temperature cancels in P(open) = &#963;(logit).</text>
+          <text class="bs" x="40" y="324">training draws stochastic gates (Hard-Concrete / Gumbel); evaluation takes the deterministic mode.</text>
+        </svg>
+      </div>
+      <figcaption>
+        <span class="figtag alt">Figure 2</span>
+        <b>The router step, executed once per position.</b>
+        A closed-loop predictor (&#9312;) produces a representation for the next token whose violation becomes the
+        surprise signal (&#9313;); the calibrated gate (&#9314;) decides whether to switch; candidate states are drawn
+        from a compositional manifold plus continuous nuance (&#9315;) and ranked by a bilinear-plus-value
+        System&nbsp;1 score with an explicit jump cost (&#9316;). The dashed feedback is what makes the loop
+        <em>closed</em> &mdash; and it is itself an ablatable switch.
+      </figcaption>
+    </figure>
+
+    <h3>4.1 The switch: when to stop and rethink</h3>
+    <div class="plain">
+      <p>
+        <span class="lead">The heart of System&nbsp;3 is a very simple question:</span> &ldquo;did something
+        unexpected just happen?&rdquo; The supervisor makes a guess about the next word, compares it to what
+        actually arrived, and produces a number &mdash; surprise. Low surprise means &ldquo;carry on, keep
+        the same state&rdquo;; high surprise means &ldquo;prick up your ears and update&rdquo;. To avoid
+        twitching at every tiny blip, we give the state a kind of inertia: it takes more than one surprise to
+        move it, and it tracks how long it has held still.
+      </p>
+    </div>
+    <div class="technical">
+      <p>
+        Raw error is neither dimension- nor scale-invariant, so we project both the target and the prediction
+        onto the <strong>unit-RMS sphere</strong> before taking a mean squared error. The result provably lies
+        in <code>[0, 4]</code> regardless of <code>d_model</code>, and equals
+        <code>2 &middot; (1 &minus; cos similarity)</code> &mdash; surprise is a genuine geometric disagreement.
+      </p>
+      <div class="eq">
+        <var>&#293;<sub>t</sub></var> = <var>f<sub>&theta;</sub></var>([ <var>h<sub>t&#8722;1</sub></var> ; <var>s<sub>t&#8722;1</sub></var> ])
+        &nbsp;&middot;&nbsp;
+        <var>r<sub>t</sub></var> = &#8214; <var>u</var>(<var>e<sub>t</sub></var>) &minus; <var>u</var>(<var>&#293;<sub>t</sub></var>) &#8214;&sup2; &isin; [0, 4]
+      </div>
+      <p>
+        The target is the <em>next-token embedding</em>, not the post-attention context: consecutive context
+        vectors correlate at only <code>cos &asymp; 0.33</code> and the predictor plateaus, which would leave
+        surprise nearly constant and the gate with no usable input. Because the embedding is reused by the tied
+        LM head, this also ties the router&rsquo;s objective to the model&rsquo;s own output space. Raw surprise is
+        standardised against a running EMA of its mean and variance, so the gate always sees a zero-centred,
+        unit-variance signal.
+      </p>
+      <p>
+        Switching is a <strong>Hard-Concrete</strong> (stretched-L0) gate &mdash; a genuinely discrete
+        open/closed decision that stays differentiable through a reparameterised relaxation. Its open
+        probability is exactly <code>&sigma;(logit)</code> (the temperature cancels), so the reported open
+        rate is the true one. While the gate stays closed the state is held and the dwell counter ticks:
+      </p>
+      <div class="eq">
+        <var>s<sub>t</sub></var> = <var>g<sub>t</sub></var>&middot;<var>s</var><sup>cand</sup> + (1 &minus; <var>g<sub>t</sub></var>)&middot;<var>s<sub>t&#8722;1</sub></var>
+        &nbsp;&middot;&nbsp;
+        <var>&tau;<sub>t</sub></var> = (1 &minus; <var>g<sub>t</sub></var>)(<var>&tau;<sub>t&#8722;1</sub></var> + 1)
+      </div>
+      <p>
+        The dwell counter <var>&tau;<sub>t</sub></var> is fed back through Fourier features, so the gate can
+        learn a <em>rate</em> of switching rather than a point condition. A <code>rate_target</code> loss pulls
+        the expected switch rate toward a small target (8%); an <code>l0_penalty</code> mode is available for
+        true sparsity.
+      </p>
+    </div>
+
+    <h3>4.2 The menu: a small space of &ldquo;frames of mind&rdquo;</h3>
+    <div class="plain">
+      <p>
+        <span class="lead">When the state does change, what does it change to?</span> We keep a small,
+        fixed menu of &ldquo;moves&rdquo;, built from two knobs: <em>what kind of thing am I doing</em>
+        (planning, explaining, checking&hellip;) and <em>how hard am I thinking</em> (a quick pass, a careful
+        one). Mixing the two gives a grid of possibilities. We let the model also add a small personal twist
+        to whichever option it picks &mdash; a bit of nuance &mdash; so it is never stuck with a rigid
+        label.
+      </p>
+    </div>
+    <div class="technical">
+      <p>
+        A learned <em>macro codebook</em> (intent) and <em>depth codebook</em> (how much computation) combine
+        multiplicatively into a compositional anchor:
+      </p>
+      <div class="eq">
+        <var>m</var><sub>c</sub> = normalize( <var>m</var><sup>1</sup><sub>i</sub> + <var>m</var><sup>2</sup><sub>j</sub> + <var>W<sub>fuse</sub></var>( <var>m</var><sup>1</sup><sub>i</sub> &#8857; <var>m</var><sup>2</sup><sub>j</sub> ) )
+      </div>
+      <p>
+        giving <code>6 &times; 4 = 24</code> unit-norm anchors. Each position builds a joint query
+        <var>u<sub>t</sub></var> from the context projection and &mdash; in the closed-loop variant &mdash; the
+        previous state, fetches the top-<var>k</var> anchors, and generates <var>k</var> continuous
+        &ldquo;nuance&rdquo; vectors. Each proposal is a local deviation around a discrete intent:
+      </p>
+      <div class="eq">
+        <var>u<sub>t</sub></var> = RMSNorm( SiLU( <var>h</var><sup>p</sup> + <var>W<sub>fb</sub></var> <var>s<sub>t&#8722;1</sub></var> ) )
+        &nbsp;&middot;&nbsp;
+        <var>c<sub>k</sub></var> = <var>a<sub>k</sub></var> + <var>&nu;</var> &middot; normalize( <var>&#251;<sub>k</sub></var> )
+      </div>
+    </div>
+    <h3>4.3 Choosing a state &mdash; with a bias toward staying put</h3>
+    <div class="plain">
+      <p>
+        <span class="lead">Among the menu options, the supervisor picks the one that fits best.</span>
+        But it also has a mild reluctance to jump, like inertia. A new frame of mind has to be <em>clearly</em>
+        better than the current one before the model will switch to it, which keeps behaviour stable and stops
+        the state from flapping around.
+      </p>
+    </div>
+    <div class="technical">
+      <p>
+        Candidates are ranked by an interpretable System&nbsp;1 metric: a bilinear compatibility term, a
+        learned scalar value, the anchor&rsquo;s routing logit, minus an explicit quadratic <em>jump cost</em>
+        that penalises moving far from the current state.
+      </p>
+      <div class="eq">
+        score<sub>k</sub> = ( <var>q</var><sup>&#8868;</sup><var>c<sub>k</sub></var> ) / &radic;<var>d</var>
+        + <var>v</var>(<var>c<sub>k</sub></var>)
+        + <var>anchor<sub>k</sub></var>
+        &minus; <var>&lambda;<sub>smooth</sub></var> &#8214; <var>c<sub>k</sub></var> &minus; <var>s<sub>t&#8722;1</sub></var> &#8214;&sup2;
+      </div>
+      <p>
+        The winner is selected with a straight-through Gumbel-softmax during training (argmax at eval), then
+        mixed with the previous state by the gate. A Sinkhorn optimal-transport <em>balance</em> loss spreads
+        traffic across the 24 anchors, an orthogonality or DPP diversity loss keeps proposals from collapsing,
+        and a JEPA loss trains the predictor itself.
+      </p>
+    </div>
+
+    <h3>4.4 Steering: how a state changes the thinking</h3>
+    <div class="plain">
+      <p>
+        <span class="lead">A state is only useful if it actually changes behaviour.</span> So each state
+        reaches into every layer through three small, independent levers: it retunes the layer&rsquo;s
+        normalisation, it subtly reshapes the attention (making some heads sharper or softer), and it adds a
+        small, state-specific correction to the layer&rsquo;s feed-forward maths. All three start switched off,
+        so an untrained System&nbsp;3 is exactly an ordinary transformer until it learns to use them.
+      </p>
+    </div>
+    <div class="technical">
+      <ul class="clean">
+        <li><strong>AdaRMSNorm modulation.</strong> The refined state yields per-channel gain and bias,
+          <code>(1+g) &#8857; RMSNorm(h) + b</code>. Zero-initialised, so the block begins as vanilla.</li>
+        <li><strong>State-routed LoRA-SwiGLU.</strong> A low-rank perturbation of the feed-forward path, gated
+          per-rank by <code>SiLU(W<sub>r</sub> s)</code> &mdash; the state chooses how much of which low-rank
+          direction to add. Also zero-initialised.</li>
+        <li><strong>Per-head temperature &amp; value gating.</strong> Each head&rsquo;s query is scaled by
+          <code>softplus(&tau;<sub>head</sub>(s))</code> and the output gated by <code>&sigma;(W<sub>v</sub> s)</code>.</li>
+      </ul>
+      <p>
+        Between layers the state is refined by an exact <strong>associative scan</strong> over the sequence
+        (Kogge&ndash;Stone, O(log&nbsp;T)): a learned forget gate writes a small impulse into the state and the
+        prefix scan accumulates it &mdash; a gated linear recurrence computed in parallel. The switch trace zeroes
+        the gate at switch positions, so the scan respects the event boundaries the router found.
+      </p>
+    </div>
+    <figure>
+      <div class="figpanel">
+        <svg class="diagram" viewBox="0 0 1080 520" role="img" aria-label="Coupled steering block">
+          <defs>
+            <marker id="f3-slate" viewBox="0 0 10 10" refX="7.6" refY="5" markerWidth="6.4" markerHeight="6.4" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="#4d5870"/>
+            </marker>
+            <marker id="f3-teal" viewBox="0 0 10 10" refX="7.6" refY="5" markerWidth="6.4" markerHeight="6.4" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="#1c6b5c"/>
+            </marker>
+          </defs>
+          <rect x="0" y="0" width="1080" height="520" fill="#fcfaf4"/>
+          <text class="ttl" x="40" y="44">Inside one state-coupled block</text>
+          <line x1="40" y1="58" x2="1040" y2="58" stroke="#e2dccb" stroke-width="1.3"/>
+
+          <rect class="bx" x="40" y="168" width="86" height="66" rx="8" fill="#efe9dd" stroke="#4d5870"/>
+          <text class="bt" x="83" y="196" text-anchor="middle">h_t</text>
+          <text class="bs" x="83" y="216" text-anchor="middle">hidden</text>
+
+          <rect class="bx" x="40" y="320" width="86" height="66" rx="8" fill="#e2efe9" stroke="#1c6b5c"/>
+          <text class="bt" x="83" y="348" text-anchor="middle">s_t</text>
+          <text class="bs" x="83" y="368" text-anchor="middle">state</text>
+
+          <rect class="bx" x="170" y="286" width="320" height="196" rx="10" fill="#e2efe9" stroke="#1c6b5c"/>
+          <text class="bt" x="190" y="314">Inter-layer associative scan</text>
+          <text class="bs" x="190" y="340">Kogge&#8211;Stone prefix scan &middot; O(log T)</text>
+          <text class="bs" x="190" y="362">a = &#963;(W_f[h;s])&middot;(1&#8722;g_t)&middot;valid</text>
+          <text class="bs" x="190" y="384">b = (1&#8722;a)&middot;SiLU(W_i h)</text>
+          <text class="bs" x="190" y="406">s' = RMSNorm( s + 0.2 &middot; scan(a,b) )</text>
+          <text class="bs" x="190" y="434" fill="#1c6b5c">&rarr; refined state s' passed to layer &#8467;+1</text>
+
+          <rect x="516" y="72" width="404" height="392" rx="12" fill="none" stroke="#c3b9a3" stroke-width="1.4" stroke-dasharray="6 5"/>
+
+          <rect class="bx" x="540" y="96" width="356" height="100" rx="8" fill="#efe9dd" stroke="#4d5870"/>
+          <text class="bt" x="560" y="124">AdaRMSNorm modulation</text>
+          <text class="bs" x="560" y="150">(1 + g_i) &#8857; RMSNorm(h) + b_i</text>
+          <text class="bs" x="560" y="172">(g_i, b_i) = chunk( W_s &middot; s' )</text>
+
+          <rect class="bx" x="540" y="216" width="356" height="100" rx="8" fill="#efe9dd" stroke="#4d5870"/>
+          <text class="bt" x="560" y="244">State-steered attention (GQA)</text>
+          <text class="bs" x="560" y="270">q &larr; q &middot; softplus( &#964;_head(s') )</text>
+          <text class="bs" x="560" y="292">out &larr; out &middot; &#963;( W_v &middot; s' )</text>
+
+          <rect class="bx" x="540" y="336" width="356" height="100" rx="8" fill="#efe9dd" stroke="#4d5870"/>
+          <text class="bt" x="560" y="364">State-routed LoRA-SwiGLU</text>
+          <text class="bs" x="560" y="390">SwiGLU(x) + LoRA(x) &#8857; &#963;( W_r &middot; s' )</text>
+          <text class="bs" x="560" y="412">rank 16 &middot; zero-init (identity at step 0)</text>
+
+          <rect class="bx" x="952" y="168" width="92" height="66" rx="8" fill="#efe9dd" stroke="#4d5870"/>
+          <text class="bt" x="998" y="196" text-anchor="middle">h'</text>
+          <text class="bs" x="998" y="216" text-anchor="middle">residual</text>
+
+          <line x1="126" y1="353" x2="166" y2="353" stroke="#1c6b5c" stroke-width="1.6" marker-end="url(#f3-teal)"/>
+          <path d="M126,201 H148 V320 H166" fill="none" stroke="#4d5870" stroke-width="1.6" marker-end="url(#f3-slate)"/>
+          <path d="M126,186 H148 V120 H536" fill="none" stroke="#4d5870" stroke-width="1.6" marker-end="url(#f3-slate)"/>
+          <text class="be" x="250" y="112">h</text>
+          <path d="M330,286 V140 H536" fill="none" stroke="#1c6b5c" stroke-width="1.6" marker-end="url(#f3-teal)"/>
+          <text class="be" x="470" y="132">s'</text>
+          <line x1="718" y1="196" x2="718" y2="212" stroke="#4d5870" stroke-width="1.6" marker-end="url(#f3-slate)"/>
+          <line x1="718" y1="316" x2="718" y2="332" stroke="#4d5870" stroke-width="1.6" marker-end="url(#f3-slate)"/>
+          <path d="M896,386 H930 V201 H948" fill="none" stroke="#4d5870" stroke-width="1.6" marker-end="url(#f3-slate)"/>
+        </svg>
+      </div>
+      <figcaption>
+        <span class="figtag">Figure 3</span>
+        <b>Inside one coupled block.</b>
+        The refined state <var>s'</var> (from the associative scan) drives three steering mechanisms: AdaRMSNorm
+        modulation of the normalised hidden state, a per-head attention temperature and value gate, and a
+        state-routed low-rank feed-forward perturbation. All three are zero-initialised, so training begins from
+        an exact vanilla transformer and <em>opts in</em> to steering.
+      </figcaption>
+    </figure>
+
+    <h3>4.5 What training is asked to do</h3>
+    <div class="plain">
+      <p>
+        <span class="lead">The model is trained on two goals at once.</span> The obvious one: predict the next
+        word well. The subtle ones: keep the states balanced (don&rsquo;t put everything in one bucket), keep
+        the candidate proposals varied, train the predictor to be a good predictor, and switch neither too
+        often nor too rarely. Each goal is a separate, weighted term &mdash; and each can be turned off.
+      </p>
+    </div>
+    <div class="technical">
+      <div class="eq">
+        <var>L</var> = <var>L</var><sub>NTP</sub>
+        + <var>w</var><sub>bal</sub><var>L</var><sub>sinkhorn</sub>
+        + <var>w</var><sub>div</sub><var>L</var><sub>dpp</sub>
+        + <var>w</var><sub>jepa</sub><var>L</var><sub>jepa</sub>
+        + <var>w</var><sub>dwell</sub><var>L</var><sub>dwell</sub>
+      </div>
+      <p class="small">
+        The JEPA term uses the same unit-RMS MSE as the gate (so the predictor is trained on exactly the
+        quantity the gate acts on), the balance term is a Sinkhorn optimal-transport assignment over switched
+        positions, the diversity term is a log-determinant (DPP) volume objective on the proposal Gram matrix,
+        and the dwell term pulls the expected open rate toward the target switch rate.
+      </p>
+    </div>
+  </section>
+  <section id="setup">
+    <h2><span class="num">5</span> Experimental setup</h2>
+    <div class="plain">
+      <p>
+        <span class="lead">This is intentionally a small, honest test.</span> We trained a modest 53-million
+        parameter model from scratch on two small, well-understood datasets: short children&rsquo;s stories
+        (which tests fluent language) and grade-school maths word problems (which tests multi-step thinking).
+        Small enough to run on limited hardware, real enough to see whether the idea helps at all.
+      </p>
+    </div>
+    <div class="technical">
+      <p>
+        Both datasets &mdash; <strong>TinyStories</strong> and <strong>TinyGSM8k</strong> &mdash; are tokenised
+        into a single flat <code>uint16</code> stream; the tail 1% is held out for validation. The full
+        configuration of the reported run is below.
+      </p>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <caption><b>Table 1.</b> Model and optimisation configuration of the reported run.</caption>
+        <thead><tr><th>Component</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td>Parameters</td><td>53.0 M (tied embedding / LM head)</td></tr>
+          <tr><td>Breadth &amp; depth</td><td><code>d_model=512</code>, <code>n_layers=8</code> (1 stem + 7 steered)</td></tr>
+          <tr><td>Attention</td><td><code>n_heads=8</code>, <code>n_kv_heads=2</code> (GQA), RoPE &theta;=10&#8308;</td></tr>
+          <tr><td>State</td><td><code>d_state=128</code>, <code>6</code> intents &times; <code>4</code> depth modes, <code>k=4</code> proposals</td></tr>
+          <tr><td>Steering</td><td>LoRA rank 16 &middot; AdaRMSNorm &middot; per-head temperature</td></tr>
+          <tr><td>Sequence / batch</td><td><code>256</code> &times; <code>192</code> = 49,152 tokens/step</td></tr>
+          <tr><td>Optimiser</td><td>AdamW, lr 6e-4, &beta;=(0.9, 0.95), weight-decay 0.1, grad-clip 1.0</td></tr>
+          <tr><td>Schedule</td><td>200-step linear warmup &rarr; cosine decay</td></tr>
+          <tr><td>Precision</td><td>bf16 autocast (CUDA), TF32 matmuls</td></tr>
+          <tr><td>Checkpointing</td><td>auto-resume &middot; best-val restore &middot; early-stop patience 5</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout">
+      <div class="h">A small but consequential detail</div>
+      <p>
+        <code>nn.Embedding</code> initialises at N(0,1) and the LM head is <em>tied</em> to it, so an untrained
+        model starts at ~100 nats of loss and wastes warmup. We rescale the shared embedding to the
+        config&rsquo;s <code>initializer_range</code> so training begins near
+        <code>ln(vocab) &asymp; 10.8</code> nats &mdash; the random-guessing line in Figure&nbsp;4.
+      </p>
+    </div>
+  </section>
+
+  <section id="results">
+    <h2><span class="num">6</span> Results</h2>
+    <div class="plain">
+      <p>
+        <span class="lead">Two questions matter. Did it learn, and is the state really doing anything?</span>
+        The first is easy to show with a learning curve. The second is the interesting one: a state can look
+        meaningful in a picture while the rest of the model quietly ignores it. So we ran a direct test &mdash;
+        delete or scramble the state, and see whether the model gets worse.
+      </p>
+    </div>
+
+    <h3>6.1 Did it learn?</h3>
+    <figure>
+      <div class="figpanel">
+        <img src="test1_result/1_training_convergence.png" alt="Training and validation loss curves" loading="lazy">
+      </div>
+      <figcaption>
+        <span class="figtag alt">Figure 4</span>
+        <b>Held-out convergence on TinyStories + TinyGSM8k.</b>
+        Best validation loss <strong>2.004 nats (perplexity 7.4)</strong> at step 450, from a random-guessing
+        baseline of 10.82 nats (perplexity 50,257). The red validation curve is still descending &mdash; this run
+        is <em>compute-limited, not capacity-saturated</em>, the honest reading of a small-scale result.
+      </figcaption>
+    </figure>
+
+    <h3>6.2 Is the state a driver, or just decoration?</h3>
+    <div class="plain">
+      <p>
+        <span class="lead">This is the test that keeps us honest.</span> We take the trained model and run it
+        three extra ways without any retraining: normally; with the state wiped to zero; and with the state
+        shuffled so it no longer matches the text. If the state is doing real work, wiping or shuffling it
+        should make predictions worse. It does &mdash; on both counts.
+      </p>
+    </div>
+    <div class="technical">
+      <p>
+        The counterfactual runs below intervene only on the forward pass. &ldquo;Scrambled&rdquo; permutes the
+        state across batch and time, which preserves its statistics but destroys its correspondence to the
+        input &mdash; a strict test of specificity.
+      </p>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <caption><b>Table 2.</b> Counterfactual intervention on the latent state (step 450, 15 validation batches).</caption>
+        <thead><tr><th>Condition</th><th>Held-out loss (nats)</th><th>&Delta; vs. normal</th><th>Reading</th></tr></thead>
+        <tbody>
+          <tr><td>Normal eval (deterministic gate)</td><td>2.0072</td><td>&mdash;</td><td>reference</td></tr>
+          <tr><td>Calibrated stochastic gate</td><td>2.0082</td><td class="pos">+0.0010</td><td>gate acts on a real distribution</td></tr>
+          <tr><td>Scrambled state (permuted b &times; t)</td><td>2.0102</td><td class="neg">+0.0030</td><td>state is <em>specific</em>, not noise</td></tr>
+          <tr><td>Zeroed state (<var>s<sub>t</sub></var> = 0)</td><td>2.0114</td><td class="neg">+0.0042</td><td>state is <em>load-bearing</em></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <figure>
+      <div class="figpanel">
+        <img src="test1_result/2_mechanistic_audit.png" alt="Counterfactual and mechanistic audit" loading="lazy">
+      </div>
+      <figcaption>
+        <span class="figtag">Figure 5</span>
+        <b>Driver-vs-passenger counterfactual audit at step 450</b> (eval loss 2.0072 nats, switch rate 5.7%).
+        <em>Left:</em> zeroing the state costs <strong>+0.0042 nats</strong> and permuting it costs
+        <strong>+0.0030 nats</strong> &mdash; ablating the state hurts. <em>Centre:</em> the AdaRMSNorm modulation
+        magnitude jumps ~14&times; at the second steered layer and rises with depth, while the LoRA-to-base
+        feed-forward ratio stays small (~1.1%). <em>Right:</em> Sinkhorn balancing keeps <strong>4.6 of
+        6</strong> intents effectively active.
+      </figcaption>
+    </figure>
+
+    <h3>6.3 What the state space looks like</h3>
+    <div class="plain">
+      <p>
+        <span class="lead">A quick look inside the menu.</span> The 24 possible states are not all equally
+        spaced &mdash; some are naturally closer to each other, and we can see that with a similarity map. We
+        can also see which states the model actually reaches for while reading real text.
+      </p>
+    </div>
+    <figure>
+      <div class="figpanel">
+        <img src="test1_result/3_manifold_and_heatmap.png" alt="Compositional state geometry and utilisation heatmap" loading="lazy">
+      </div>
+      <figcaption>
+        <span class="figtag alt">Figure 6</span>
+        <b>The state space is well-spread but not orthogonal.</b>
+        <em>Left:</em> the 24&times;24 pairwise cosine similarity of the anchors has mean |cos| = 0.30 with a
+        clear block structure &mdash; anchors sharing an intent cluster together, exactly the intended geometry of
+        a compositional codebook. <em>Right:</em> routing share by (intent &times; depth); the model concentrates
+        on a few high-traffic cells (Plan&times;Medium at 23.4%) rather than spreading uniformly, with Sinkhorn
+        balance preventing full collapse.
+      </figcaption>
+    </figure>
+
+    <h3>6.4 Watching the state during generation</h3>
+    <div class="plain">
+      <p>
+        <span class="lead">The clearest picture of the idea is a timeline.</span> As the model writes, its
+        surprise jiggles on nearly every word &mdash; it is always sensing. But its actual frame of mind barely
+        moves: it stays in the same state for long stretches and changes only a handful of times. Fast sensing,
+        slow deciding.
+      </p>
+    </div>
+    <figure>
+      <div class="figpanel">
+        <img src="test1_result/4_router_generation_trace.png" alt="Router state and surprise trace during generation" loading="lazy">
+      </div>
+      <figcaption>
+        <span class="figtag">Figure 7</span>
+        <b>A state and surprise trace over 70 generated tokens.</b>
+        The macro state holds (a single Plan span) while the surprise signal fluctuates; dashed verticals mark
+        the four Hard-Concrete switch events. The point is the <em>contrast in cadence</em>: surprise moves every
+        token, but the state changes only four times in seventy steps &mdash; the separation of timescales the
+        architecture is built around.
+      </figcaption>
+    </figure>
+    <div class="tablewrap">
+      <table>
+        <caption><b>Table 3.</b> Headline numbers of the reported run (step 450).</caption>
+        <thead><tr><th>Metric</th><th>Value</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>Best validation loss</td><td class="pos">2.004 nats</td><td>perplexity 7.4</td></tr>
+          <tr><td>Random-guessing baseline</td><td>10.82 nats</td><td>perplexity 50,257</td></tr>
+          <tr><td>Eval loss (audit pass)</td><td>2.0072 nats</td><td>deterministic routing</td></tr>
+          <tr><td>Switch rate</td><td>5.7 %</td><td>8 % target, event-driven</td></tr>
+          <tr><td>Effective macro states</td><td>4.6 / 6</td><td>entropy-based</td></tr>
+          <tr><td>State-removed penalty</td><td>+0.0042 nats</td><td>zeroed state</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+  <section id="ablations">
+    <h2><span class="num">7</span> Ablations &mdash; one switch at a time</h2>
+    <div class="plain">
+      <p>
+        <span class="lead">An idea with many parts is hard to evaluate all at once.</span> So every mechanism
+        in System&nbsp;3 is a separate on/off switch. You can start from a bare-bones version that has none of
+        the fancy parts, then turn on exactly one thing and see what it changes. That turns &ldquo;is System
+        3 good?&rdquo; into a series of small, answerable questions.
+      </p>
+    </div>
+    <div class="technical">
+      <p>
+        The rung-0 baseline uses open-loop routing, flat states, a plain softmax gate, Switch-MoE balancing,
+        pairwise orthogonality, and FiLM-only steering. Each switch below is a validated field in a frozen
+        config dataclass, so changing one cannot silently change another.
+      </p>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <caption><b>Table 4.</b> Ablation switches in <code>System3Config</code> and what each controls.</caption>
+        <thead><tr><th>Switch</th><th>Options</th><th>Mechanism</th></tr></thead>
+        <tbody>
+          <tr><td><code>state_mode</code></td><td>discrete &middot; continuous &middot; hybrid</td><td>anchor-only, nuance-only, or anchor+nuance proposals</td></tr>
+          <tr><td><code>closed_loop_proposals</code></td><td>true &middot; false</td><td>condition proposals on <var>s<sub>t&#8722;1</sub></var> or not</td></tr>
+          <tr><td><code>use_surprise_gate</code></td><td>true &middot; false</td><td>gate sees (surprise, dwell) or only (<var>h<sub>t</sub></var>, <var>s<sub>t&#8722;1</sub></var>)</td></tr>
+          <tr><td><code>gate_type</code></td><td>hard_concrete &middot; softmax</td><td>stretched-L0 gate vs. 2-way Gumbel-softmax</td></tr>
+          <tr><td><code>balance_mode</code></td><td>none &middot; switch &middot; sinkhorn</td><td>anchor traffic balancing (OT assignment vs. Switch-MoE)</td></tr>
+          <tr><td><code>diversity_mode</code></td><td>none &middot; orthogonality &middot; dpp</td><td>proposal de-collapse objective</td></tr>
+          <tr><td><code>dwell_mode</code></td><td>none &middot; rate_target &middot; l0_penalty</td><td>switch-rate regularisation vs. true L0 sparsity</td></tr>
+          <tr><td><code>use_state_scan</code></td><td>true &middot; false</td><td>inter-layer parallel associative state refinement</td></tr>
+          <tr><td><code>use_lora_swiglu</code></td><td>true &middot; false</td><td>dynamic rank-<var>r</var> state-routed FFN perturbation</td></tr>
+          <tr><td><code>use_head_temp_steering</code></td><td>true &middot; false</td><td>state-modulated per-head attention temperature</td></tr>
+          <tr><td><code>surprise_target</code></td><td>embedding &middot; hidden</td><td>predictive-coding target for the switch gate</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout tip">
+      <div class="h">Reproducible by construction</div>
+      <p>
+        <code>minimal_baseline()</code> returns the rung-0 config and <code>with_ablation(**changes)</code> is a
+        pure, immutable toggle &mdash; so an experiment is a one-line diff, not a code rewrite.
+      </p>
+    </div>
+  </section>
+
+  <section id="discussion">
+    <h2><span class="num">8</span> Discussion &amp; limitations</h2>
+    <div class="plain">
+      <p>
+        <span class="lead">We would rather undersell than overclaim.</span> This is an early, small-scale
+        result. The idea works in the sense that the state is genuinely used, but at this size the benefit is
+        modest and there is a lot of room to scale.
+      </p>
+    </div>
+    <ul class="clean">
+      <li><strong>The scale is small.</strong> 53M parameters on TinyStories&nbsp;+&nbsp;TinyGSM8k is a proof of
+        mechanism. 2.004 nats is a good small-model number and nothing more; the validation curve has not
+        plateaued, so the model is undertrained rather than saturated.</li>
+      <li><strong>The driver signal is real but small.</strong> The +0.0042-nat penalty for zeroing the state is
+        consistent across conditions, but it is a few thousandths of a nat: we can claim <em>direction</em> and
+        <em>specificity</em>, not yet magnitude.</li>
+      <li><strong>Single seed, single dataset blend.</strong> No seed sweep and no second held-out dataset; the
+        audit numbers are a snapshot at step 450.</li>
+      <li><strong>The anchor labels are an interpretation.</strong> Reading the six intents as
+        Plan&nbsp;/&nbsp;Think&nbsp;/&nbsp;Decomp&nbsp;/&nbsp;Exec&nbsp;/&nbsp;Verify&nbsp;/&nbsp;Concl is a
+        reading of an unsupervised codebook, not ground truth.</li>
+    </ul>
+    <p>
+      What we believe generalises is the <strong>shape</strong> of the idea: a persistent, event-driven latent
+      state that <em>steers</em> rather than merely selects, with a built-in falsification test. Natural next
+      steps: scale width and tokens until the driver delta is unmistakable; probe the codebook with causal,
+      per-anchor interventions; and give the router a predictive-coding objective trained at a longer horizon
+      than one token.
+    </p>
+    <div class="callout warn">
+      <div class="h">Honest verdict of the built-in audit</div>
+      <p>
+        At this checkpoint the model is a genuine driver, but an early one: the steering pathways are awake and
+        rising with depth, yet the LoRA path contributes only ~1% of the feed-forward signal. The substrate
+        works; the amplitude is a matter of scale.
+      </p>
+    </div>
+  </section>
+
+  <section id="conclusion">
+    <h2><span class="num">9</span> Conclusion</h2>
+    <p>
+      System&nbsp;3 shows that a System&nbsp;1 predictive-coding router can be embedded inside an ordinary
+      autoregressive transformer, trained end-to-end with it, and &mdash; most importantly &mdash; that its
+      contribution can be <strong>measured and falsified</strong> rather than asserted. The architecture is
+      fully switchable, the audit is one command, and the result is a small model whose latent state
+      demonstrably carries information the backbone uses. We release the code, the audit, and this report so
+      the idea can be scaled, ablated, and contested.
+    </p>
+  </section>
+
+  <section id="reproduce">
+    <h2><span class="num">10</span> Reproduce</h2>
+    <p>Everything below runs from the repository root.</p>
+<pre><code><span class="cmt"># 1. install</span>
+pip install -r requirements.txt
+pip install -e ".[dev]"
+
+<span class="cmt"># 2. train (auto-resumes from checkpoints/latest.pt)</span>
+python train.py --data tokens.uint16 --steps-per-run 200
+
+<span class="cmt"># 3. plot the training curves from the saved checkpoint</span>
+python plot_history.py --ckpt-dir checkpoints --save curves.png
+
+<span class="cmt"># 4. run the driver-vs-passenger audit + render Figure 5</span>
+python audit.py --data tokens.uint16 --save audit.png
+
+<span class="cmt"># 5. tests</span>
+python -m pytest -q</code></pre>
+    <p class="small">
+      The token shard is a flat <code>uint16</code> array produced by your own tokenizer prep step; the tail
+      <code>val_fraction</code> of the stream is held out automatically for validation.
+    </p>
+  </section>
+
+  <section id="cite">
+    <h2><span class="num">11</span> Citation</h2>
+    <p>If you build on System&nbsp;3, please cite the project:</p>
+    <div class="bibwrap">
+      <button class="copybtn" id="copyBib" data-target="bibtex">Copy</button>
+<pre id="bibtex"><code>@misc{tdizhere2026system3,
+  title  = {System 3: A Fast System 1 Router that Steers a
+            Slow System 2 Transformer},
+  author = {tdizhere},
+  year   = {2026}
+}</code></pre>
+    </div>
+  </section>
+
+  <section id="references">
+    <h2><span class="num">&nbsp;</span> References</h2>
+    <ol class="refs">
+      <li>Kahneman, D. (2011). <em>Thinking, Fast and Slow.</em> Farrar, Straus and Giroux.</li>
+      <li>Rao, R. P. N. &amp; Ballard, D. H. (1999). Predictive coding in the visual cortex. <em>Nature Neuroscience</em>, 2(1), 79&ndash;87.</li>
+      <li>LeCun, Y. (2022). A Path Towards Autonomous Machine Intelligence. <em>OpenReview.</em></li>
+      <li>Assran, M., et al. (2023). Self-Supervised Learning from Images with a Joint-Embedding Predictive Architecture (I-JEPA). <em>CVPR.</em></li>
+      <li>Shazeer, N., et al. (2017). Outrageously Large Neural Networks: The Sparsely-Gated Mixture-of-Experts Layer. <em>ICLR.</em></li>
+      <li>Fedus, W., Zoph, B., Shazeer, N. (2022). Switch Transformers. <em>JMLR.</em></li>
+      <li>Louizos, C., Welling, M., Kingma, D. P. (2018). Learning Sparse Neural Networks through L0 Regularization. <em>ICLR.</em></li>
+      <li>Jang, E., Gu, S., Poole, B. (2017). Categorical Reparameterization with Gumbel-Softmax. <em>ICLR.</em></li>
+      <li>Maddison, C. J., Mnih, A., Teh, Y. W. (2017). The Concrete Distribution. <em>ICLR.</em></li>
+      <li>P&eacute;rez, E., Strub, F., de Vries, H., Dumoulin, V., Courville, A. (2018). FiLM: Visual Reasoning with a General Conditioning Layer. <em>AAAI.</em></li>
+      <li>Peebles, W. &amp; Xie, S. (2023). Scalable Diffusion Models with Transformers (adaLN-Zero). <em>ICCV.</em></li>
+      <li>Hu, E., et al. (2022). LoRA: Low-Rank Adaptation of Large Language Models. <em>ICLR.</em></li>
+      <li>Gu, A. &amp; Dao, T. (2024). Mamba: Linear-Time Sequence Modeling with Selective State Spaces. <em>COLM.</em></li>
+      <li>Rabiner, L. R. (1989). A Tutorial on Hidden Markov Models. <em>Proc. IEEE.</em></li>
+      <li>Cuturi, M. (2013). Sinkhorn Distances: Lightspeed Computation of Optimal Transport. <em>NeurIPS.</em></li>
+      <li>Kulesza, A. &amp; Taskar, B. (2012). Determinantal Point Processes for Machine Learning. <em>Foundations and Trends in ML.</em></li>
+      <li>Blelloch, G. E. (1990). Prefix Sums and Their Applications. <em>CMU Technical Report.</em></li>
+      <li>Ainslie, J., et al. (2023). GQA: Training Generalized Multi-Query Transformer Models. <em>EMNLP.</em></li>
+      <li>Su, J., et al. (2021). RoFormer: Enhanced Transformer with Rotary Position Embedding. <em>arXiv:2104.09864.</em></li>
+      <li>Shazeer, N. (2020). GLU Variants Improve Transformer. <em>arXiv:2002.05202.</em></li>
+      <li>Zhang, B. &amp; Sennrich, R. (2019). Root Mean Square Layer Normalization. <em>NeurIPS.</em></li>
+      <li>Vaswani, A., et al. (2017). Attention Is All You Need. <em>NeurIPS.</em></li>
+      <li>Eldan, R. &amp; Li, Y. (2023). TinyStories. <em>arXiv:2305.07759.</em></li>
+      <li>Cobbe, K., et al. (2021). Training Verifiers to Solve Math Word Problems (GSM8K). <em>arXiv:2110.14168.</em></li>
+    </ol>
+  </section>
+
+  <hr class="sep">
+  <footer>
+    <p><strong>System&nbsp;3</strong> &mdash; an experimental substrate for event-driven latent state in language models.</p>
+    <p><a href="https://github.com/tdizhere/System3">github.com/tdizhere/System3</a> &middot; reference implementation &middot; <a href="#cite">cite this work</a></p>
+    <p class="small">Figures rendered from the repository&rsquo;s own audit and plotting entrypoints.</p>
+  </footer>
+</main>
+
+<div id="lightbox" aria-hidden="true"><img alt="Zoomed figure"><div class="lbcap"></div></div>
+
+<script>
+(function () {
+  document.getElementById("printBtn").addEventListener("click", function () { window.print(); });
+
+  var bar = document.getElementById("progress");
+  function onScroll() {
+    var h = document.documentElement;
+    var max = h.scrollHeight - h.clientHeight;
+    bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + "%";
+  }
+  window.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+
+  var links = Array.prototype.slice.call(document.querySelectorAll("nav.links a"));
+  var targets = links.map(function (a) { return document.querySelector(a.getAttribute("href")); });
+  if ("IntersectionObserver" in window) {
+    var spy = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (!en.isIntersecting) return;
+        var i = targets.indexOf(en.target);
+        if (i < 0) return;
+        links.forEach(function (l) { l.classList.remove("active"); });
+        links[i].classList.add("active");
+      });
+    }, { rootMargin: "-45% 0px -50% 0px", threshold: 0 });
+    targets.forEach(function (t) { if (t) spy.observe(t); });
+  }
+
+  function animate(el) {
+    var target = parseFloat(el.getAttribute("data-count"));
+    var dec = parseInt(el.getAttribute("data-dec") || "0", 10);
+    var start = null, dur = 900;
+    function step(ts) {
+      if (start === null) start = ts;
+      var p = Math.min(1, (ts - start) / dur);
+      var eased = 1 - Math.pow(1 - p, 3);
+      el.textContent = (target * eased).toFixed(dec);
+      if (p < 1) requestAnimationFrame(step);
+      else el.textContent = target.toFixed(dec);
+    }
+    requestAnimationFrame(step);
+  }
+  if ("IntersectionObserver" in window) {
+    var co = new IntersectionObserver(function (entries, obs) {
+      entries.forEach(function (en) {
+        if (en.isIntersecting) { animate(en.target); obs.unobserve(en.target); }
+      });
+    }, { threshold: 0.6 });
+    document.querySelectorAll("[data-count]").forEach(function (c) { co.observe(c); });
+  }
+
+  var lb = document.getElementById("lightbox");
+  var lbImg = lb.querySelector("img");
+  var lbCap = lb.querySelector(".lbcap");
+  document.querySelectorAll(".figpanel img").forEach(function (img) {
+    img.addEventListener("click", function () {
+      lbImg.src = img.src;
+      lbCap.textContent = img.alt || "";
+      lb.classList.add("open");
+      lb.setAttribute("aria-hidden", "false");
+    });
+  });
+  function closeLb() { lb.classList.remove("open"); lb.setAttribute("aria-hidden", "true"); lbImg.src = ""; }
+  lb.addEventListener("click", closeLb);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeLb(); });
+
+  var copyBtn = document.getElementById("copyBib");
+  if (copyBtn) {
+    copyBtn.addEventListener("click", function () {
+      var el = document.getElementById(copyBtn.getAttribute("data-target"));
+      var text = el.innerText;
+      function done() {
+        copyBtn.textContent = "Copied";
+        copyBtn.classList.add("done");
+        setTimeout(function () { copyBtn.textContent = "Copy"; copyBtn.classList.remove("done"); }, 1600);
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, done);
+      } else {
+        var r = document.createRange();
+        r.selectNodeContents(el);
+        var sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(r);
+        try { document.execCommand("copy"); } catch (e) {}
+        done();
+      }
+    });
+  }
+})();
+</script>
+</body>
+</html>
